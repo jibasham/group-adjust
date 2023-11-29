@@ -66,8 +66,8 @@ def test_missing_vals(group_adjust_func, null_value):
 def test_weights_len_equals_group_len():
     # Need to have 1 weight for each group
 
-    # vals = [1, np.NaN, 3, 5, 8, 7]
-    vals = [1, None, 3, 5, 8, 7]
+    vals = [1, np.NaN, 3, 5, 8, 7]
+    # vals = [1, None, 3, 5, 8, 7]
     grps_1 = ["USA", "USA", "USA", "USA", "USA", "USA"]
     grps_2 = ["MA", "RI", "RI", "CT", "CT", "CT"]
     weights = [0.65]
@@ -87,11 +87,15 @@ def test_group_len_equals_vals_len():
         group_adjust(vals, [grps_1, grps_2], weights)
 
 
-@benchmark
 @pytest.mark.parametrize(
-    "group_adjust_func, null_value", [(group_adjust_pandas, np.NaN), (group_adjust_polars, None)]
+    "group_adjust_func, null_value",
+    [
+        (group_adjust_pandas, np.NaN),
+        (group_adjust_polars, None),
+        (group_adjust_numpy, np.NaN),
+    ],
 )
-def test_performance(group_adjust_func, null_value):
+def test_performance(group_adjust_func, null_value, benchmark):
     # vals = 1000000*[1, None, 3, 5, 8, 7]
     # If you're doing numpy, use the np.NaN instead
     vals = 1000000 * [1, null_value, 3, 5, 8, 7]
@@ -101,6 +105,6 @@ def test_performance(group_adjust_func, null_value):
     weights = [0.20, 0.30, 0.50]
 
     start = datetime.now()
-    group_adjust_func(vals, [grps_1, grps_2, grps_3], weights)
+    benchmark(group_adjust_func, vals, [grps_1, grps_2, grps_3], weights)
     end = datetime.now()
     diff = end - start
