@@ -1,3 +1,6 @@
+"""
+@author: jibasham@gmail.com
+"""
 from datetime import datetime
 from typing import List, Union
 
@@ -65,15 +68,10 @@ def group_adjust(
     ----------
 
     vals    : List of floats/ints
-
         The original values to adjust
-
     groups  : List of Lists
-
         A list of groups. Each group will be a list of ints
-
     weights : List of floats
-
         A list of weights for the groupings.
 
     Returns
@@ -81,7 +79,7 @@ def group_adjust(
 
     A list-like demeaned version of the input values
     """
-    return group_adjust_pandas(vals, groups, weights)
+    return group_adjust_polars(vals, groups, weights)
 
 
 def group_adjust_pandas(
@@ -150,18 +148,24 @@ def group_adjust_pandas(
     return demeaned_vals.tolist()
 
 
-def group_adjust_polars(vals, groups, weights):
+def group_adjust_polars(
+    vals: List[float], groups: List[List[Union[str, int]]], weights: List[float]
+) -> List[float]:
     """
     Calculate a group adjustment (demean) using Polars.
 
     Polars is generally more efficient than Pandas, as it tries to use more CPU cores
     and has other optimizations under the hood to reshuffle the order of lazy operations
     and reduce memory usage. Since we are going for speed here, I thought I would give
-    it a go and compare to pandas. I am getting 966 ms wall clock and 334 MB memory
+    it a go and compare to pandas. I am getting 717 ms wall clock and 250 MB memory
     utilization for the "benchmark" test with 20M elements in the DataFrame.
 
     The implementation here is pretty much the same as for pandas (which I did first),
-    but just as a fairly recognizable transcription into polars syntax.
+    but just as a fairly recognizable transcription into polars syntax. I am storing
+    the intermediate values in the DataFrame, which is not necessary, but it does oddly
+    make it a bit faster than using a throwaway Series to store the weighted means
+    (as I do in the pandas version). And I am assuming faster is more important than
+    using a little extra memory.
 
     Note: For the tests to pass in polars, use "None" as the null value
     instead of np.NaN.
@@ -186,7 +190,6 @@ def group_adjust_polars(vals, groups, weights):
 
     # Create a Polars DataFrame
     df = pl.DataFrame({"vals": vals})
-    df["weighted_sum"] = pl.Series(0.0, dtype=pl.Float64)
 
     for i, group in enumerate(groups):
         if len(group) != len(vals):
@@ -203,6 +206,7 @@ def group_adjust_polars(vals, groups, weights):
         df = df.drop("mean")
 
     # Sum the weighted means for each row
+    # This is a new step - for the pandas version we accumulated them as we went.
     weighted_sum_expr = sum([pl.col(f"weighted_mean_{i}") for i in range(len(groups))])
     df = df.with_columns(weighted_sum_expr.alias("weighted_sum"))
 
@@ -212,7 +216,9 @@ def group_adjust_polars(vals, groups, weights):
     return df["demeaned_vals"].to_list()
 
 
-def group_adjust_numpy(vals, groups, weights):
+def group_adjust_numpy(
+    vals: List[float], groups: List[List[Union[str, int]]], weights: List[float]
+) -> List[float]:
     """
     Calculate a group adjustment (demean) using NumPy.
 
