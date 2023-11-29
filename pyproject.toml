@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "group-adjust"
+description = "Demeaning a series with multiple labels per entry"
+readme = "README.md"
+requires-python = ">=3.8"
+dynamic = ["version"]
+license.text = "Proprietary"
+dependencies = [
+    "jupyter",
+    "numpy",
+    "pandas>=2.0.0",
+    "polars",
+    "pytest",
+    "pytest-benchmark",
+    "memory-profiler"
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "ruff",
+]
+
+[project.urls]
+source = "https://github.com/jibasham/group-adjust.git"
+
+[tool.setuptools.dynamic]
+version = { file = "./__version__" }
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+
+[tool.coverage.report]
+include_namespace_packages = true
+exclude_also = [
+    "def __repr__",
+    "raise NotImplementedError",
+    "@(abc\\.)?abstractmethod",
+]
+ignore_errors = false
+skip_empty = true
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+command_line = "-m pytest"
+
+[tool.isort]
+profile = "black"
+reverse_relative = true
+line_length = 100
+use_parentheses = true
+include_trailing_comma = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = [
+    "slow: Use if test take > 1 second to run (skip running with '-m \"not slow\"')",
+]
+
+[tool.ruff]
+select = [
+    "A", # built-ins
+    "B", # flake8 bugbears
+    #    "D",    # docstrings
+    "E", # pycodestyle errors
+    "F", # flake8 pyflakes
+    "I", # imports
+    "N", # pep-8 naming conventions
+    "PT", # pytest
+    #    "ANN",  # type annotations
+    "C90", # mccabe complexity
+    "DTZ", # datetime timezone
+    "ICN", # import conventions
+    "NPY", # numpy
+    "PD", # pandas
+    "RET", # return statements
+]
+ignore = [
+    "PT009", # use assert instead of unittest AssertEqual
+    "I001", # import sorting - conflicts with isort
+    # Below should be allowed for memory efficiency: keep it
+    "PD002", # discourages use of `inplace` to modify a dataframe
+    "RET504", # allow dummy assignment before return for clarity
+]
+line-length = 100
