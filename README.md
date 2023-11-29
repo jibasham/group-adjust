@@ -1,6 +1,9 @@
 # group-adjust
 
-Demeaning a series with multiple labels per entry
+_Several solutions to demeaning a series of values with multiple labels_
+
+We try out a few different solutions in python using common numerical packages to see
+which one comes out the fastest.
 
 # Installation
 
@@ -11,7 +14,7 @@ git clone https://github.com/jibasham/group-adjust.git .
 cd group-adjust
 python -m venv venv
 source venv/bin/activate
-pip install .
+pip install -e .
 ```
 
 # The Problem
@@ -99,9 +102,13 @@ they stack up.
   believe only pandas has a good sparse data structure. I'm sure polars will get one in the next
   couple years.
 
-# Solutions
+# Discussion of the Solutions
 
 See the [`group_adjust.py`](src/group_adjust.py) file for the implementations.
+
+You can see the timing benchmarks shown below by simply running pytest. To easily see the memory profiling,
+you can run the script, and edit the function being used `group_adjust` function, which serves as
+a wrapper for the different implementations.
 
 ## Pure Python
 
@@ -170,16 +177,17 @@ See [`group_adjust.py Line 134`](src/group_adjust.py)for the implementations.
 
 # Benchmarking
 
-_To run yourself simply run `pytest` from the root directory of this repository._
-
-_Benchmarks are done on a MacBook M2 with 12 cores / 16 GB RAM._
+> _To run yourself simply run `pytest` from the root directory of this repository._
+>
+> _Benchmarks are done on a MacBook M2 with 12 cores / 16 GB RAM,_
+> _Python 3.12.0, pandas 2.1.3, numpy 1.26.2 and polars 0.19.17_.
 
 The results are pretty much what I expected. The pandas solution, while it looks nice and clean, is the slowest and
 uses the most memory. The numpy solution is actually faster than I thought, although I do expect it would slow down
 if you had a lot of unique groups, due to the nested for loops. Polars takes the win here. Its definitely the fastest,
 although the code is a bit harder to read than the pandas solution.
 
-![Benchmark](benchmark_output.png)
+![Benchmark Results](benchmark_output.png)
 
 We see the same trend for memory utilization as we do for speed
 
@@ -190,3 +198,8 @@ We see the same trend for memory utilization as we do for speed
 | Polars  | 250 MB       |
 | Numpy   | 310 MB       |
 | Pandas  | 540 MB       |
+
+So in summary, polars is the clear winner in both speed and memory efficiency. In terms of
+code readability, I would say that the opposite trend is true. Pandas is the most obvious,
+while polars requires a bit of staring to grok the full intent. But for a performance critical
+application, I would say the 3x in speed and 2x in memory improvement is worth it.
