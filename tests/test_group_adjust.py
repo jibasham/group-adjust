@@ -3,14 +3,22 @@ import pytest
 from group_adjust import *
 
 
-def test_three_groups():
+@pytest.mark.parametrize(
+    "group_adjust_func",
+    [
+        (group_adjust_pandas),
+        (group_adjust_polars),
+        (group_adjust_numpy),
+    ],
+)
+def test_three_groups(group_adjust_func):
     vals = [1, 2, 3, 8, 5]
     grps_1 = ["USA", "USA", "USA", "USA", "USA"]
     grps_2 = ["MA", "MA", "MA", "RI", "RI"]
     grps_3 = ["WEYMOUTH", "BOSTON", "BOSTON", "PROVIDENCE", "PROVIDENCE"]
     weights = [0.15, 0.35, 0.5]
 
-    adj_vals = group_adjust(vals, [grps_1, grps_2, grps_3], weights)
+    adj_vals = group_adjust_func(vals, [grps_1, grps_2, grps_3], weights)
     # 1 - (USA_mean*.15 + MA_mean * .35 + WEYMOUTH_mean * .5)
     # 2 - (USA_mean*.15 + MA_mean * .35 + BOSTON_mean * .5)
     # 3 - (USA_mean*.15 + MA_mean * .35 + BOSTON_mean * .5)
@@ -26,13 +34,21 @@ def test_three_groups():
         assert abs(ans - res) < 1e-5
 
 
-def test_two_groups():
+@pytest.mark.parametrize(
+    "group_adjust_func",
+    [
+        (group_adjust_pandas),
+        (group_adjust_polars),
+        (group_adjust_numpy),
+    ],
+)
+def test_two_groups(group_adjust_func):
     vals = [1, 2, 3, 8, 5]
     grps_1 = ["USA", "USA", "USA", "USA", "USA"]
     grps_2 = ["MA", "RI", "CT", "CT", "CT"]
     weights = [0.65, 0.35]
 
-    adj_vals = group_adjust(vals, [grps_1, grps_2], weights)
+    adj_vals = group_adjust_func(vals, [grps_1, grps_2], weights)
     # 1 - (.65 * 3.8 + .35 * 1.0) = -1.82
     # 2 - (.65 * 3.8 + .35 * 2.0) = -1.17
     # 3 - (.65 * 3.8 + .35 * 5.33333) = -1.33666
@@ -42,7 +58,12 @@ def test_two_groups():
 
 
 @pytest.mark.parametrize(
-    "group_adjust_func, null_value", [(group_adjust_pandas, np.NaN), (group_adjust_polars, None)]
+    "group_adjust_func, null_value",
+    [
+        (group_adjust_pandas, np.NaN),
+        (group_adjust_polars, None),
+        (group_adjust_numpy, np.NaN),
+    ],
 )
 def test_missing_vals(group_adjust_func, null_value):
     vals = [1, null_value, 3, 5, 8, 7]
@@ -63,28 +84,44 @@ def test_missing_vals(group_adjust_func, null_value):
             assert abs(ans - res) == pytest.approx(0.0, abs=1e-5)
 
 
-def test_weights_len_equals_group_len():
+@pytest.mark.parametrize(
+    "group_adjust_func, null_value",
+    [
+        (group_adjust_pandas, np.NaN),
+        (group_adjust_polars, None),
+        (group_adjust_numpy, np.NaN),
+    ],
+)
+def test_weights_len_equals_group_len(group_adjust_func, null_value):
     # Need to have 1 weight for each group
 
-    vals = [1, np.NaN, 3, 5, 8, 7]
+    vals = [1, null_value, 3, 5, 8, 7]
     # vals = [1, None, 3, 5, 8, 7]
     grps_1 = ["USA", "USA", "USA", "USA", "USA", "USA"]
     grps_2 = ["MA", "RI", "RI", "CT", "CT", "CT"]
     weights = [0.65]
 
     with pytest.raises(ValueError):
-        group_adjust(vals, [grps_1, grps_2], weights)
+        group_adjust_func(vals, [grps_1, grps_2], weights)
 
 
-def test_group_len_equals_vals_len():
+@pytest.mark.parametrize(
+    "group_adjust_func, null_value",
+    [
+        (group_adjust_pandas, np.NaN),
+        (group_adjust_polars, None),
+        (group_adjust_numpy, np.NaN),
+    ],
+)
+def test_group_len_equals_vals_len(group_adjust_func, null_value):
     # The groups need to be same shape as vals
-    vals = [1, None, 3, 5, 8, 7]
+    vals = [1, null_value, 3, 5, 8, 7]
     grps_1 = ["USA"]
     grps_2 = ["MA", "RI", "RI", "CT", "CT", "CT"]
     weights = [0.65]
 
     with pytest.raises(ValueError):
-        group_adjust(vals, [grps_1, grps_2], weights)
+        group_adjust_func(vals, [grps_1, grps_2], weights)
 
 
 @pytest.mark.parametrize(

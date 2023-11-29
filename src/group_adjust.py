@@ -3,7 +3,8 @@
 @email: jibasham@gmail.com
 """
 from datetime import datetime
-from typing import List, Union
+from functools import wraps
+from typing import Callable, List, Union
 
 import numpy as np
 import pandas as pd
@@ -36,6 +37,39 @@ def group_adjust(
     return group_adjust_polars(vals, groups, weights)
 
 
+def input_validator(func: Callable) -> Callable:
+    """
+    A decorator to validate that inputs have the appropriate length.
+
+    Satisfies two of the example tests. Should not be too costly since
+    lists know their length and checks are fast.
+
+    Parameters
+    ----------
+
+    func : Function to be wrapped.
+    """
+
+    @wraps(func)
+    def wrapper(
+        vals: List[float],
+        groups: List[List[Union[str, int]]],
+        weights: List[float],
+        *args,
+        **kwargs,
+    ):
+        if len(groups) != len(weights):
+            raise ValueError("Length of weights must match the number of groups.")
+
+        if not all([len(group) == len(vals) for group in groups]):
+            raise ValueError("Length of each group must match the length of vals.")
+
+        return func(vals, groups, weights, *args, **kwargs)
+
+    return wrapper
+
+
+@input_validator
 def group_adjust_pandas(
     vals: List[float], groups: List[List[Union[str, int]]], weights: List[float]
 ) -> List[float]:
@@ -73,20 +107,15 @@ def group_adjust_pandas(
 
     A list-like demeaned version of the input values
     """
-    if len(groups) != len(weights):
-        raise ValueError("Length of weights must match the number of groups.")
 
-    # Convert to DataFrame for efficient computation
     df = pd.DataFrame({"vals": pd.to_numeric(vals, errors="coerce")})
     df["weighted_sum"] = 0.0
 
     for i, group in enumerate(groups):
-        if len(group) != len(vals):
-            raise ValueError("Length of each group must match the length of vals.")
         # We can reduce the size in memory by quite a bit using Categoricals
         # since I expect the number of unique labels to be much smaller than
         # the number of values. Gets you down to a uint8 for each entry, so that's
-        # 10x less memory to store "PROVIDENCE" than a string.
+        # at least 10x less memory to store "PROVIDENCE" than a string.
         group_key = f"group_{i}"
         df[group_key] = pd.Categorical(group)
 
@@ -104,6 +133,7 @@ def group_adjust_pandas(
     return demeaned_vals.tolist()
 
 
+@input_validator
 def group_adjust_polars(
     vals: List[float], groups: List[List[Union[str, int]]], weights: List[float]
 ) -> List[float]:
@@ -141,20 +171,16 @@ def group_adjust_polars(
 
     A list-like demeaned version of the input values
     """
-    if len(groups) != len(weights):
-        raise ValueError("Length of weights must match the number of groups.")
-
-    # Create a Polars DataFrame
     df = pl.DataFrame({"vals": vals})
 
     for i, group in enumerate(groups):
-        if len(group) != len(vals):
-            raise ValueError("Length of each group must match the length of vals.")
         df = df.with_columns(pl.Series(f"group_{i}", group))
 
     # Calculate and store weighted means in the DataFrame
     for i in range(len(groups)):
         group_key = f"group_{i}"
+        # This is where polars syntax looks a bit clunky. This line adds the means
+        # for this group. Chaining long operations like this is considered idiomatic.
         df = df.join(
             df.groupby(group_key).agg(pl.col("vals").mean().alias("mean")), on=group_key, how="left"
         )
@@ -172,6 +198,7 @@ def group_adjust_polars(
     return df["demeaned_vals"].to_list()
 
 
+@input_validator
 def group_adjust_numpy(
     vals: List[float], groups: List[List[Union[str, int]]], weights: List[float]
 ) -> List[float]:
@@ -201,9 +228,6 @@ def group_adjust_numpy(
 
     A list-like demeaned version of the input values
     """
-    if len(groups) != len(weights):
-        raise ValueError("Length of weights must match the number of groups.")
-
     vals = np.array(vals)
     adjusted_vals = np.zeros_like(vals, dtype=float)
 
