@@ -1,13 +1,14 @@
-from group_adjust import *
 import pytest
-from datetime import datetime
-import numpy as np
+
+from group_adjust import *
+
+
 def test_three_groups():
     vals = [1, 2, 3, 8, 5]
-    grps_1 = ['USA', 'USA', 'USA', 'USA', 'USA']
-    grps_2 = ['MA', 'MA', 'MA', 'RI', 'RI']
-    grps_3 = ['WEYMOUTH', 'BOSTON', 'BOSTON', 'PROVIDENCE', 'PROVIDENCE']
-    weights = [.15, .35, .5]
+    grps_1 = ["USA", "USA", "USA", "USA", "USA"]
+    grps_2 = ["MA", "MA", "MA", "RI", "RI"]
+    grps_3 = ["WEYMOUTH", "BOSTON", "BOSTON", "PROVIDENCE", "PROVIDENCE"]
+    weights = [0.15, 0.35, 0.5]
 
     adj_vals = group_adjust(vals, [grps_1, grps_2, grps_3], weights)
     # 1 - (USA_mean*.15 + MA_mean * .35 + WEYMOUTH_mean * .5)
@@ -27,9 +28,9 @@ def test_three_groups():
 
 def test_two_groups():
     vals = [1, 2, 3, 8, 5]
-    grps_1 = ['USA', 'USA', 'USA', 'USA', 'USA']
-    grps_2 = ['MA', 'RI', 'CT', 'CT', 'CT']
-    weights = [.65, .35]
+    grps_1 = ["USA", "USA", "USA", "USA", "USA"]
+    grps_2 = ["MA", "RI", "CT", "CT", "CT"]
+    weights = [0.65, 0.35]
 
     adj_vals = group_adjust(vals, [grps_1, grps_2], weights)
     # 1 - (.65 * 3.8 + .35 * 1.0) = -1.82
@@ -45,9 +46,9 @@ def test_missing_vals():
     # If you're writing pyton, use None
     vals = [1, np.NaN, 3, 5, 8, 7]
     # vals = [1, None, 3, 5, 8, 7]
-    grps_1 = ['USA', 'USA', 'USA', 'USA', 'USA', 'USA']
-    grps_2 = ['MA', 'RI', 'RI', 'CT', 'CT', 'CT']
-    weights = [.65, .35]
+    grps_1 = ["USA", "USA", "USA", "USA", "USA", "USA"]
+    grps_2 = ["MA", "RI", "RI", "CT", "CT", "CT"]
+    weights = [0.65, 0.35]
 
     adj_vals = group_adjust(vals, [grps_1, grps_2], weights)
 
@@ -62,7 +63,7 @@ def test_missing_vals():
         elif np.isnan(ans):
             assert np.isnan(res)
         else:
-            assert abs(ans - res) < 1e-5
+            assert abs(ans - res) < 1e-5, f"{ans} != {res}"
 
 
 def test_weights_len_equals_group_len():
@@ -70,9 +71,9 @@ def test_weights_len_equals_group_len():
 
     # vals = [1, np.NaN, 3, 5, 8, 7]
     vals = [1, None, 3, 5, 8, 7]
-    grps_1 = ['USA', 'USA', 'USA', 'USA', 'USA', 'USA']
-    grps_2 = ['MA', 'RI', 'RI', 'CT', 'CT', 'CT']
-    weights = [.65]
+    grps_1 = ["USA", "USA", "USA", "USA", "USA", "USA"]
+    grps_2 = ["MA", "RI", "RI", "CT", "CT", "CT"]
+    weights = [0.65]
 
     with pytest.raises(ValueError):
         group_adjust(vals, [grps_1, grps_2], weights)
@@ -81,9 +82,9 @@ def test_weights_len_equals_group_len():
 def test_group_len_equals_vals_len():
     # The groups need to be same shape as vals
     vals = [1, None, 3, 5, 8, 7]
-    grps_1 = ['USA']
-    grps_2 = ['MA', 'RI', 'RI', 'CT', 'CT', 'CT']
-    weights = [.65]
+    grps_1 = ["USA"]
+    grps_2 = ["MA", "RI", "RI", "CT", "CT", "CT"]
+    weights = [0.65]
 
     with pytest.raises(ValueError):
         group_adjust(vals, [grps_1, grps_2], weights)
@@ -96,7 +97,7 @@ def test_performance():
     grps_1 = 1000000 * [1, 1, 1, 1, 1, 1]
     grps_2 = 1000000 * [1, 1, 1, 1, 2, 2]
     grps_3 = 1000000 * [1, 2, 2, 3, 4, 5]
-    weights = [.20, .30, .50]
+    weights = [0.20, 0.30, 0.50]
 
     start = datetime.now()
     group_adjust(vals, [grps_1, grps_2, grps_3], weights)
