@@ -153,6 +153,9 @@ def group_adjust_polars(vals, groups, weights):
     The implementation here is pretty much the same as for pandas (which I did first),
     but just as a fairly recognizable transcription into polars syntax.
 
+    Note: For the tests to pass in polars, use "None" as the null value
+    instead of np.NaN.
+
     Parameters
     ----------
 
@@ -183,7 +186,7 @@ def group_adjust_polars(vals, groups, weights):
     for i in range(len(groups)):
         group_key = f"group_{i}"
         df = df.join(
-            df.groupby(group_key).agg(pl.mean("vals").alias("mean")), on=group_key, how="left"
+            df.groupby(group_key).agg(pl.col("vals").mean().alias("mean")), on=group_key, how="left"
         )
         df = df.with_columns((pl.col("mean") * weights[i]).alias(f"weighted_mean_{i}"))
         df = df.drop("mean")

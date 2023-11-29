@@ -41,21 +41,18 @@ def test_two_groups():
         assert abs(ans - res) < 1e-5
 
 
-def test_missing_vals():
-    # If you're using NumPy or Pandas, use np.NaN
-    # If you're writing pyton, use None
-    vals = [1, np.NaN, 3, 5, 8, 7]
-    # vals = [1, None, 3, 5, 8, 7]
+@pytest.mark.parametrize(
+    "group_adjust_func, null_value", [(group_adjust_pandas, np.NaN), (group_adjust_polars, None)]
+)
+def test_missing_vals(group_adjust_func, null_value):
+    vals = [1, null_value, 3, 5, 8, 7]
     grps_1 = ["USA", "USA", "USA", "USA", "USA", "USA"]
     grps_2 = ["MA", "RI", "RI", "CT", "CT", "CT"]
     weights = [0.65, 0.35]
 
-    adj_vals = group_adjust(vals, [grps_1, grps_2], weights)
+    adj_vals = group_adjust_func(vals, [grps_1, grps_2], weights)
 
-    # This should be None or np.NaN depending on your implementation
-    # please feel free to change this line to match yours
-    answer = [-2.47, np.NaN, -1.170, -0.4533333, 2.54666666, 1.54666666]
-    # answer = [-2.47, None, -1.170, -0.4533333, 2.54666666, 1.54666666]
+    answer = [-2.47, null_value, -1.170, -0.4533333, 2.54666666, 1.54666666]
 
     for ans, res in zip(answer, adj_vals):
         if ans is None:
@@ -63,7 +60,7 @@ def test_missing_vals():
         elif np.isnan(ans):
             assert np.isnan(res)
         else:
-            assert abs(ans - res) < 1e-5, f"{ans} != {res}"
+            assert abs(ans - res) == pytest.approx(0.0, abs=1e-5)
 
 
 def test_weights_len_equals_group_len():
@@ -90,16 +87,20 @@ def test_group_len_equals_vals_len():
         group_adjust(vals, [grps_1, grps_2], weights)
 
 
-def test_performance():
+@benchmark
+@pytest.mark.parametrize(
+    "group_adjust_func, null_value", [(group_adjust_pandas, np.NaN), (group_adjust_polars, None)]
+)
+def test_performance(group_adjust_func, null_value):
     # vals = 1000000*[1, None, 3, 5, 8, 7]
     # If you're doing numpy, use the np.NaN instead
-    vals = 1000000 * [1, np.NaN, 3, 5, 8, 7]
+    vals = 1000000 * [1, null_value, 3, 5, 8, 7]
     grps_1 = 1000000 * [1, 1, 1, 1, 1, 1]
     grps_2 = 1000000 * [1, 1, 1, 1, 2, 2]
     grps_3 = 1000000 * [1, 2, 2, 3, 4, 5]
     weights = [0.20, 0.30, 0.50]
 
     start = datetime.now()
-    group_adjust(vals, [grps_1, grps_2, grps_3], weights)
+    group_adjust_func(vals, [grps_1, grps_2, grps_3], weights)
     end = datetime.now()
     diff = end - start
