@@ -1,5 +1,6 @@
 """
-@author: jibasham@gmail.com
+@author: James Basham
+@email: jibasham@gmail.com
 """
 from datetime import datetime
 from typing import List, Union
@@ -8,53 +9,6 @@ import numpy as np
 import pandas as pd
 import polars as pl
 from memory_profiler import profile
-
-
-# Your task is to implement the 'group_adjust' method as described
-# below, ensuring that all provided unit tests pass. Your solution
-# can be pure Python, NumPy, Pandas, or any combination of the three.
-# There are multiple ways of solving this problem, so feel free to be
-# creative, but please include comments to explain your code. Bonus
-# points are given for particularly efficient (fast) implementations!
-#
-# Group Adjust Method
-# The algorithm needs to do the following:
-# 1.) For each group-list provided, calculate the means of the values for each
-# unique group.
-#
-#   For example:
-#   vals       = [  1  ,   2  ,   3  ]
-#   ctry_grp   = ['USA', 'USA', 'USA']
-#   state_grp  = ['MA' , 'MA' ,  'CT' ]
-#
-#   There is only 1 country in the ctry_grp list.  So to get the means:
-#     USA_mean == mean(vals) == 2
-#     ctry_means = [2, 2, 2]
-#   There are 2 states, so to get the means for each state:
-#     MA_mean == mean(vals[0], vals[1]) == 1.5
-#     CT_mean == mean(vals[2]) == 3
-#     state_means = [1.5, 1.5, 3]
-#
-# 2.) Using the weights, calculate a weighted average of those group means
-#   Continuing from our example:
-#   weights = [.35, .65]
-#   35% weighted on country, 65% weighted on state
-#   ctry_means  = [2  , 2  , 2]
-#   state_means = [1.5, 1.5, 3]
-#   weighted_means = [2*.35 + .65*1.5, 2*.35 + .65*1.5, 2*.35 + .65*3]
-#
-# 3.) Subtract the weighted average group means from each original value
-#   Continuing from our example:
-#   val[0] = 1
-#   ctry[0] = 'USA' --> 'USA' mean == 2, ctry weight = .35
-#   state[0] = 'MA' --> 'MA'  mean == 1.5, state weight = .65
-#   weighted_mean = 2*.35 + .65*1.5 = 1.675
-#   demeaned = 1 - 1.675 = -0.675
-#   Do this for all values in the original list.
-#
-# 4.) Return the demeaned values
-#
-# Hint: See the test cases below for how the calculation should work.
 
 
 @profile
@@ -99,7 +53,7 @@ def group_adjust_pandas(
     the convenient syntax would slow you down over a pure NumPy solution, since its
     numpy under the hood anyway.
 
-    I am getting 2.7 s wall clock and 606 MB memory utilization for the "benchmark"
+    I am getting 2.4 s wall clock and 540 MB memory utilization for the "benchmark"
     test with 20M elements in the DataFrame. I am a little sad the memory usage
     is so high - I did try to play some tricks to use categorical data types and
     throw away the intermediate values as I accumulate the weighted means.
@@ -140,6 +94,8 @@ def group_adjust_pandas(
         # use it as a sort of lookup table to map the weighted means to each row.
         means = df.groupby(group_key, observed=False)["vals"].mean()
         # Accumulate the weighted means for each group as you go
+        # For a large number of groups you could end up using a lot of memory
+        # if you were to save the intermediate values.
         df["weighted_sum"] += df[group_key].map(means).astype(float) * weights[i]
 
     # Demean the values
@@ -223,10 +179,12 @@ def group_adjust_numpy(
     Calculate a group adjustment (demean) using NumPy.
 
     To be honest this is faster than I expected. I initially avoided it because I
-    could not thing of a way to get around for loops, and if there are a lot of groups
+    could not think of a way to get around for loops, and if there are a lot of groups
     it could get bogged down. But lets assume the number of groups is small, as in the
-    test cases, in which case the overhead is small. I am getting 9.54 ms wall clock
-    and 378 MB memory utilization for the "benchmark" test with 20M elements.
+    test cases, in which case the overhead is small.
+
+     I am getting 942 ms wall clock time
+    and 310 MB memory utilization for the "benchmark" test with 20M elements.
 
     Parameters
     ----------
@@ -254,10 +212,10 @@ def group_adjust_numpy(
 
         # Handle missing values in vals
         valid_mask = ~np.isnan(vals)
-        unique_groups = np.unique(group[valid_mask])
+        unique_labels = np.unique(group[valid_mask])
 
-        for ug in unique_groups:
-            group_mask = group == ug
+        for label in unique_labels:
+            group_mask = group == label
             mean_val = np.mean(vals[group_mask & valid_mask])
             adjusted_vals[group_mask] += mean_val * weight
 
