@@ -98,13 +98,13 @@ def group_adjust_pandas(
     This is the first thing I attempted and what I would call the "vanilla" solution.
     Essentially group by all the unique labels to get the means. It is pretty
     straight-forward to code up, and reasonably fast, although the extra overhead for
-    the convienet syntax would slow you down over a pure NumPy solution, since its
+    the convenient syntax would slow you down over a pure NumPy solution, since its
     numpy under the hood anyway.
 
-    I am getting 2.7 s wall clock and 764 MB memory utilization for the "benchmark"
-    test with 20M elements in the DataFrame. The memory usage is a little high since
-    I am caching some extra columns in the DataFrame, even though I played a little
-    trick conveting the groups to categoricals.
+    I am getting 2.7 s wall clock and 606 MB memory utilization for the "benchmark"
+    test with 20M elements in the DataFrame. I am a little sad the memory usage
+    is so high - I did try to play some tricks to use categorical data types and
+    throw away the intermediate values as I accumulate the weighted means.
 
     Parameters
     ----------
@@ -126,6 +126,7 @@ def group_adjust_pandas(
 
     # Convert to DataFrame for efficient computation
     df = pd.DataFrame({"vals": pd.to_numeric(vals, errors="coerce")})
+    df["weighted_sum"] = 0.0
 
     for i, group in enumerate(groups):
         if len(group) != len(vals):
@@ -134,18 +135,14 @@ def group_adjust_pandas(
         # since I expect the number of unique labels to be much smaller than
         # the number of values. Gets you down to a uint8 for each entry, so that's
         # 10x less memory to store "PROVIDENCE" than a string.
-        df[f"group_{i}"] = pd.Categorical(group)
+        group_key = f"group_{i}"
+        df[group_key] = pd.Categorical(group)
 
         # Compute the means for each group in a small DataFrame, and then
         # use it as a sort of lookup table to map the weighted means to each row.
-        group_key = f"group_{i}"
         means = df.groupby(group_key, observed=False)["vals"].mean()
-        df[f"weighted_mean_{i}"] = df[group_key].map(means).astype(float) * weights[i]
-        df["weighted_sum"] += df[f"weighted_mean_{i}"]
-
-    # Sum the weighted means for each row
-    weighted_sum_columns = [f"weighted_mean_{i}" for i in range(len(groups))]
-    df["weighted_sum"] = df[weighted_sum_columns].sum(axis=1)
+        # Accumulate the weighted means for each group as you go
+        df["weighted_sum"] += df[group_key].map(means).astype(float) * weights[i]
 
     # Demean the values
     demeaned_vals = df["vals"] - df["weighted_sum"]
